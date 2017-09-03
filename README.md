@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/ggerganov/wave-gui.svg?branch=master)](https://travis-ci.org/ggerganov/wave-gui.svg?branch=master)
+
 # wave-gui
 Yet another data-over-sound tool
 
