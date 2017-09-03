@@ -1,0 +1,30 @@
+language: c++
+
+cache: apt
+
+dist: trusty
+
+sudo: false
+
+os:
+  - linux
+  - osx
+
+compiler:
+  - gcc
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install glfw; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install fftw; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install portaudio; fi
+
+script:
+  - make
+
+addons:
+  apt:
+    packages:
+        - libglfw-dev
+        - libfftw3-dev
+        - libportaudio-dev
