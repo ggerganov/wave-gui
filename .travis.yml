@@ -4,7 +4,7 @@ cache: apt
 
 dist: trusty
 
-sudo: false
+sudo: required
 
 os:
   - linux
@@ -14,10 +14,29 @@ compiler:
   - gcc
 
 before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      wget https://github.com/glfw/glfw/releases/download/3.1.1/glfw-3.1.1.zip;
+      sudo apt-get update;
+    fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install glfw; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install fftw; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install portaudio; fi
+
+install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      sudo apt-get install -qq build-essential xorg-dev libglu1-mesa-dev libglew-dev libglm-dev;
+      sudo apt-get install -qq cmake;
+
+      cmake --version;
+
+      unzip glfw-3.1.1.zip;
+      cd glfw-3.1.1;
+      sudo cmake -G "Unix Makefiles" -DBUILD_SHARED_LIBS=ON;
+      sudo make;
+      sudo make install;
+      cd ..;
+    fi
 
 script:
   - make
@@ -25,6 +44,5 @@ script:
 addons:
   apt:
     packages:
-        - libglfw-dev
-        - libfftw3-dev
-        - libportaudio-dev
+      - libfftw3-dev
+      - portaudio19-dev

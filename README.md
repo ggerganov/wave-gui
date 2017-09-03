@@ -9,10 +9,9 @@ Yet another data-over-sound tool
     git clone https://github.com/ggerganov/wave-gui
     cd wave-gui
     git submodule update --init
-    mkdir build && cd build && cmake ..
     make
-    ./main/wave-gui
-    
+    ./build/main/wave-gui
+
 ## Dependencies
 
 - [GLFW3](http://www.glfw.org)
