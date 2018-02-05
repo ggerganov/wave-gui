@@ -19,3 +19,7 @@ Yet another data-over-sound tool
 - [GLFW3](http://www.glfw.org)
 - [FFTW](http://www.fftw.org)
 - [PortAudio](http://www.portaudio.com)
+
+## Thanks
+
+Mike Lubinets (https://github.com/mersinvald) for the Reed-Solomon error correction library
