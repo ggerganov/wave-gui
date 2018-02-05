@@ -14,6 +14,8 @@
 
 #include "fftw3.h"
 
+#include "reed-solomon/rs.hpp"
+
 #include <cmath>
 #include <thread>
 #include <mutex>
@@ -225,8 +227,11 @@ struct Core::Data {
     int subFramesPerTx;
     int curTxSubFrameId = 0;
     int nDataBitsPerTx = 0;
+    int nECCBytesPerTx = 0;
     std::array<char, ::Data::Constants::kMaxDataSize> sendData;
     std::array<char, ::Data::Constants::kMaxDataSize> receivedData;
+
+    std::shared_ptr<RS::ReedSolomon> rs = nullptr;
 };
 
 Core::Core() : _data(new Data()) {
@@ -329,11 +334,12 @@ void Core::addEvent(Event event) {
                 auto freqCheck_hz = inp->freqCheck_hz;
                 auto dataBits = inp->dataBits;
                 auto nDataBitsPerTx = inp->nDataBitsPerTx;
+                auto nECCBytesPerTx = inp->nECCBytesPerTx;
                 auto encodeIdParity = inp->encodeIdParity;
                 auto useChecksum = inp->useChecksum;
 
                 _data->inputQueue.push([this, freqStart_hz, freqDelta_hz, freqCheck_hz, dataBits, nDataBitsPerTx,
-                                       encodeIdParity, useChecksum]() {
+                                       nECCBytesPerTx, encodeIdParity, useChecksum]() {
                     _data->needRecache = true;
 
                     _data->freqStart_hz = freqStart_hz;
@@ -344,6 +350,15 @@ void Core::addEvent(Event event) {
 
                     _data->dataBits = dataBits;
                     _data->nDataBitsPerTx = nDataBitsPerTx;
+                    _data->nECCBytesPerTx = nECCBytesPerTx;
+
+                    if (nDataBitsPerTx/8 > nECCBytesPerTx && nECCBytesPerTx > 0) {
+                        _data->rs = std::make_shared<RS::ReedSolomon>(nDataBitsPerTx/8 - nECCBytesPerTx, nECCBytesPerTx);
+                    } else {
+                        CG_WARN(0, "Not using ECC because the specified number of ECC bytes is too big for this protocol\n");
+                        _data->rs.reset();
+                        _data->nECCBytesPerTx = 0;
+                    }
 
                     for (int k = 0; k < (int) _data->dataBits.size(); ++k) {
                         auto freq = freqStart_hz + freqDelta_hz*k;
@@ -396,7 +411,7 @@ void Core::addEvent(Event event) {
             }
         case DataSend:
             {
-                CG_INFO(0, "Data Send\n");
+                CG_INFO(0, "Data Send, size = %d\n", (int) strlen(inp->sendData.data()));
 
                 auto sendData = inp->sendData;
                 auto subFramesPerTx = inp->subFramesPerTx;
@@ -544,8 +559,25 @@ void Core::main() {
                 requiredChecksum = (requiredChecksum & ((1 << ::Data::Constants::kMaxBitsPerChecksum) - 1));
 
                 isValid = _data->useChecksum ? (curChecksum == requiredChecksum) || (curChecksum == (requiredChecksum ^ (1 << 1))) : data->receivingData;
-                if (isValid && (lastChecksum == curChecksum)) {
-                    for (int i = 0; i < _data->nDataBitsPerTx/8; ++i) {
+                bool checksumMatch = (lastChecksum == curChecksum);
+
+                if (_data->rs) {
+                    static std::array<std::uint8_t, ::Data::Constants::kMaxDataBits/8> repaired;
+                    bool decoded = true;
+                    if (_data->rs->Decode(receivedData.data(), repaired.data()) != 0) {
+                        decoded = false;
+                    } else {
+                        for (int i = 0; i < _data->nDataBitsPerTx/8 - _data->nECCBytesPerTx; ++i) {
+                            receivedData[i] = repaired[i];
+                        }
+                        receivedData[_data->nDataBitsPerTx/8 - _data->nECCBytesPerTx] = 0;
+                    }
+                    checksumMatch = true;
+                    isValid &= decoded;
+                }
+
+                if (isValid && checksumMatch) {
+                    for (int i = 0; i < _data->nDataBitsPerTx/8 - _data->nECCBytesPerTx; ++i) {
                         if (receivedData[i] == 0) receivedData[i] = ' ';
                     }
                     if (++nTimesReceived == _data->nConfirmFrames && receivedData != receivedDataLast) {
@@ -560,17 +592,17 @@ void Core::main() {
                             _data->receivedData.fill(0);
                         } else {
                             if (curParity == lastParity && _data->receivedId > 0 && _data->encodeIdParity) {
-                                _data->receivedId -= _data->nDataBitsPerTx/8;
+                                _data->receivedId -= _data->nDataBitsPerTx/8 - _data->nECCBytesPerTx;
                             }
                         }
                         lastParity = curParity;
                         tLast = tNow;
 
-                        for (int i = 0; i < _data->nDataBitsPerTx/8; ++i) {
+                        for (int i = 0; i < _data->nDataBitsPerTx/8 - _data->nECCBytesPerTx; ++i) {
                             _data->receivedData[_data->receivedId++] = receivedData[i];
                         }
                     }
-                } else if (isValid && (lastChecksum != curChecksum)) {
+                } else if (isValid && (checksumMatch == false)) {
                     lastChecksum = curChecksum;
                     nTimesReceived = 0;
                 } else if (isValid == false) {
@@ -609,7 +641,7 @@ void Core::main() {
                 if (_data->curTxSubFrameId >= _data->subFramesPerTx) {
                     _data->curTxSubFrameId = 0;
                     _data->frameId = 0;
-                    _data->sendId += _data->nDataBitsPerTx/8;
+                    _data->sendId += _data->nDataBitsPerTx/8 - _data->nECCBytesPerTx;
                 } else if (_data->curTxSubFrameId >= _data->nRampFrames) {
                     _data->nRampFrames = _data->nRampFramesBlend;
                 }
@@ -621,9 +653,18 @@ void Core::main() {
                 } else {
                     _data->curTxSubFrameId = _data->frameId;
 
+                    static std::array<std::uint8_t, ::Data::Constants::kMaxDataBits/8> encoded;
+                    if (_data->rs) {
+                        _data->rs->Encode(_data->sendData.data() + _data->sendId, encoded.data());
+                    } else {
+                        for (int j = 0; j < _data->nDataBitsPerTx/8; ++j) {
+                            encoded[j] = _data->sendData[_data->sendId + j];
+                        }
+                    }
+
                     for (int j = 0; j < _data->nDataBitsPerTx/8; ++j) {
                         for (int i = 0; i < 8; ++i) {
-                            _data->dataBits[j*8 + i] = _data->sendData[_data->sendId + j] & (1 << i);
+                            _data->dataBits[j*8 + i] = encoded[j] & (1 << i);
                         }
                     }
                 }
@@ -637,7 +678,7 @@ void Core::main() {
                 checksum += (1 << 0);
 
                 if (_data->encodeIdParity) {
-                    if ((_data->dataId + _data->sendId/(_data->nDataBitsPerTx/8)) & 1) {
+                    if ((_data->dataId + _data->sendId/(_data->nDataBitsPerTx/8 - _data->nECCBytesPerTx)) & 1) {
                         checksum += (1 << 1);
                     }
                 }
@@ -656,13 +697,24 @@ void Core::main() {
                     ::addAmplitude(_data->bitAmplitude[k], _data->outputBlockTmp, _data->sendVolume, sampleStartId, sampleFinalId);
                 }
 
-                for (int k = 0; k < ::Data::Constants::kMaxBitsPerChecksum; ++k) {
-                    ++nFreq;
-                    if ((checksum & (1 << k)) || (k == 0)) {
-                        ::addAmplitude(_data->checksumAmplitude[k], _data->outputBlockTmp, _data->sendVolume, sampleStartId, sampleFinalId);
-                        continue;
+                if (_data->rs == nullptr) {
+                    for (int k = 0; k < ::Data::Constants::kMaxBitsPerChecksum; ++k) {
+                        ++nFreq;
+                        if ((checksum & (1 << k)) || (k == 0)) {
+                            ::addAmplitude(_data->checksumAmplitude[k], _data->outputBlockTmp, _data->sendVolume, sampleStartId, sampleFinalId);
+                            continue;
+                        }
+                        ::addAmplitude(_data->checksum0Amplitude[k], _data->outputBlockTmp, _data->sendVolume, sampleStartId, sampleFinalId);
                     }
-                    ::addAmplitude(_data->checksum0Amplitude[k], _data->outputBlockTmp, _data->sendVolume, sampleStartId, sampleFinalId);
+                } else {
+                    for (int k = 0; k < 2; ++k) {
+                        ++nFreq;
+                        if ((checksum & (1 << k)) || (k == 0)) {
+                            ::addAmplitude(_data->checksumAmplitude[k], _data->outputBlockTmp, _data->sendVolume, sampleStartId, sampleFinalId);
+                            continue;
+                        }
+                        ::addAmplitude(_data->checksum0Amplitude[k], _data->outputBlockTmp, _data->sendVolume, sampleStartId, sampleFinalId);
+                    }
                 }
 
                 if (nFreq == 0) nFreq = 1;

@@ -328,6 +328,7 @@ void UI::renderWindowControls() const {
             if (ImGui::SliderInt("Data bytes per Tx", &idx, 1, ::Data::Constants::kMaxDataBits/8)) {
                 inp->nDataBitsPerTx = 8*idx;
             }
+            ImGui::SliderInt("EEC Bytes", &inp->nECCBytesPerTx, 0, 31);
         }
 
         ImGui::Checkbox("1##dataBit0", &inp->dataBits[0]) && (updateSendParameters = true); ImGui::SameLine();
@@ -363,7 +364,10 @@ void UI::renderWindowControls() const {
         }
 
         ImGui::Text("Tx duration: %4.4f ms", inp->subFramesPerTx*subFrameLength_ms);
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Bandwidth:   %4.2f B/s", 1000.0/(inp->subFramesPerTx*subFrameLength_ms)*inp->nDataBitsPerTx/8.0);
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Bandwidth:   %4.2f B/s",
+                           (inp->nDataBitsPerTx/8 > inp->nECCBytesPerTx) ?
+                           1000.0/(inp->subFramesPerTx*subFrameLength_ms)*(inp->nDataBitsPerTx/8.0 - inp->nECCBytesPerTx) :
+                           1000.0/(inp->subFramesPerTx*subFrameLength_ms)*inp->nDataBitsPerTx/8.0);
     }
 
     ImGui::End();

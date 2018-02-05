@@ -64,6 +64,7 @@ struct StateInput {
     int nConfirmFrames = 6;
     int subFramesPerTx = 128;
     int nDataBitsPerTx = 128;
+    int nECCBytesPerTx = 4;
 
     bool encodeIdParity = true;
     bool useChecksum = false;
