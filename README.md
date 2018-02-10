@@ -19,6 +19,7 @@ Yet another data-over-sound tool
 - [GLFW3](http://www.glfw.org)
 - [FFTW](http://www.fftw.org)
 - [PortAudio](http://www.portaudio.com)
+- [ImGui](https://github.com/ocornut/imgui) (git submodule)
 
 ## Thanks
 
