@@ -24,53 +24,46 @@
 #include <atomic>
 #include <cstdlib>
 #include <cinttypes>
+#include <functional>
+
+#ifdef __EMSCRIPTEN__
+static bool g_isInitialized = false;
+#else
+static bool g_isInitialized = true;
+#endif
 
 namespace {
-constexpr float IRAND_MAX = 1.0f/RAND_MAX;
-inline float frand() { return ((float)(rand()%RAND_MAX)*IRAND_MAX); }
+    constexpr float IRAND_MAX = 1.0f/RAND_MAX;
+    inline float frand() { return ((float)(rand()%RAND_MAX)*IRAND_MAX); }
 
-inline void updateStateData(const ::Data::StateData * bsrc, ::Data::StateData * bdst) {
-    bdst->nIterations = bsrc->nIterations;
-    bdst->samplesPerFrame = bsrc->samplesPerFrame;
-    bdst->samplesPerSubFrame = bsrc->samplesPerSubFrame;
-    bdst->sendingData = bsrc->sendingData;
-    bdst->receivingData = bsrc->receivingData;
-    bdst->sampleAmplitude = bsrc->sampleAmplitude;
-    bdst->sampleSpectrum = bsrc->sampleSpectrum;
-    bdst->historySpectrumAverage = bsrc->historySpectrumAverage;
-    bdst->bitAmplitude = bsrc->bitAmplitude;
-    bdst->receivedData = bsrc->receivedData;
-}
-
-inline void addAmplitude(const ::Data::AmplitudeData & src, ::Data::AmplitudeData & dst, float scalar, int startId, int finalId) {
-    for (int i = startId; i < finalId; i++) {
-        dst[i] += scalar*src[i];
+    inline void updateStateData(const ::Data::StateData * bsrc, ::Data::StateData * bdst) {
+        bdst->nIterations = bsrc->nIterations;
+        bdst->samplesPerFrame = bsrc->samplesPerFrame;
+        bdst->samplesPerSubFrame = bsrc->samplesPerSubFrame;
+        bdst->sendingData = bsrc->sendingData;
+        bdst->receivingData = bsrc->receivingData;
+        bdst->sampleAmplitude = bsrc->sampleAmplitude;
+        bdst->sampleSpectrum = bsrc->sampleSpectrum;
+        bdst->historySpectrumAverage = bsrc->historySpectrumAverage;
+        bdst->bitAmplitude = bsrc->bitAmplitude;
+        bdst->receivedData = bsrc->receivedData;
     }
-}
-}
 
-struct Core::Data {
-    Data() {
+    inline void addAmplitude(const ::Data::AmplitudeData & src, ::Data::AmplitudeData & dst, float scalar, int startId, int finalId) {
+        for (int i = startId; i < finalId; i++) {
+            dst[i] += scalar*src[i];
+        }
+    }
+
+    bool initAudio(SDL_AudioDeviceID & devid_in, SDL_AudioDeviceID & devid_out) {
+        CG_INFO(0, "Initializing audio I/O ...\n");
+
         SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
         if (SDL_Init(SDL_INIT_AUDIO) < 0) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s\n", SDL_GetError());
+            return (1);
         }
-
-        for (auto & s : historySpectrum) {
-            s.fill(0);
-        }
-    }
-
-    ~Data() {
-        free();
-
-        SDL_CloseAudio();
-        SDL_Quit();
-    }
-
-    bool init() {
-        SDL_SetHintWithPriority(SDL_HINT_AUDIO_RESAMPLING_MODE, "medium", SDL_HINT_OVERRIDE);
 
         {
             int devcount = SDL_GetNumAudioDevices(SDL_FALSE);
@@ -112,7 +105,7 @@ struct Core::Data {
                 obtainedSpec.channels != desiredSpec.channels ||
                 obtainedSpec.samples != desiredSpec.samples) {
                 SDL_CloseAudio();
-                throw std::runtime_error("Failed to initialize desired SDL_OpenAudio!");
+                return false;
             }
         }
 
@@ -134,9 +127,60 @@ struct Core::Data {
             CG_INFO(0, "    - Samples per frame: %d\n", captureSpec.samples);
         }
 
-        int numChannels = captureSpec.channels;
+        return true;
+    }
+}
 
-        SDL_PauseAudio(0);
+static std::function<bool()> g_init;
+
+static SDL_AudioDeviceID g_devid_in = 0;
+static SDL_AudioDeviceID g_devid_out = 0;
+
+int init() {
+    if (g_isInitialized) return 0;
+
+    if (::initAudio(g_devid_in, g_devid_out) == false) return 22;
+
+    g_isInitialized = true;
+    g_init();
+
+    return 0;
+}
+
+extern "C" {
+    int doInit() { return init(); }
+}
+
+struct Core::Data {
+    Data() {
+        SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+
+        for (auto & s : historySpectrum) {
+            s.fill(0);
+        }
+    }
+
+    ~Data() {
+        free();
+
+        SDL_CloseAudio();
+        SDL_Quit();
+    }
+
+    bool init() {
+        if (g_isInitialized == false) {
+            return false;
+        }
+
+#ifdef __EMSCRIPTEN__
+        devid_in = g_devid_in;
+        devid_out = g_devid_out;
+#else
+        if (::initAudio(devid_in, devid_out) == false) return false;
+#endif
+
+        int numChannels = 1;
+
         SDL_PauseAudioDevice(devid_in, SDL_FALSE);
         SDL_PauseAudioDevice(devid_out, SDL_FALSE);
 
@@ -261,6 +305,11 @@ Core::Core() : _data(new Data()) {
     _data->stateData[Data::BUFFER_UI]     = std::make_shared<::Data::StateData>();
     _data->stateData[Data::BUFFER_CACHED] = std::make_shared<::Data::StateData>();
     _data->stateData[Data::BUFFER_ACTIVE] = std::make_shared<::Data::StateData>();
+
+    g_init = [this]() {
+        this->addEvent(Core::Init);
+        return true;
+    };
 }
 
 Core::~Core() {
@@ -308,14 +357,14 @@ void Core::addEvent(Event event) {
     switch(event) {
         case Init:
             {
-                CG_INFO(0, "Initializing audio I/O ...\n");
-
                 auto sampleRate = inp->sampleRate;
                 auto samplesPerFrame = inp->samplesPerFrame;
                 auto samplesPerSubFrame = inp->samplesPerSubFrame;
                 auto hzPerFrame = inp->getHzPerFrame();
 
                 _data->inputQueue.push([this, sampleRate, samplesPerFrame, samplesPerSubFrame, hzPerFrame]() {
+                    if (_data->isInitialized) return;
+
                     _data->isInitialized = false;
                     _data->needRecache = true;
 
@@ -542,7 +591,7 @@ void Core::main() {
 
                 bool isValid = true;
                 {
-                    int bin = _data->checksumFreqs_hz[0]*_data->ihzPerFrame;
+                    int bin = std::round(_data->checksumFreqs_hz[0]*_data->ihzPerFrame);
                     if (_data->historySpectrumAverage[bin] < 10*_data->historySpectrumAverage[bin - 1] &&
 						_data->historySpectrumAverage[bin] < 10*_data->historySpectrumAverage[bin + 1]) {
                         if (data->receivingData == true) {
@@ -559,7 +608,7 @@ void Core::main() {
                 }
 
                 for (int k = 0; k < _data->nDataBitsPerTx; ++k) {
-                    int bin = _data->dataFreqs_hz[k]*_data->ihzPerFrame;
+                    int bin = std::round(_data->dataFreqs_hz[k]*_data->ihzPerFrame);
                     if (_data->historySpectrumAverage[bin] > 1.0*_data->historySpectrumAverage[bin + 1]) {
                         receivedData[k/8] += (1 << (k%8));
                     } else {
@@ -570,7 +619,7 @@ void Core::main() {
                 }
 
                 for (int k = 1; k < ::Data::Constants::kMaxBitsPerChecksum; ++k) {
-                    int bin = _data->checksumFreqs_hz[k]*_data->ihzPerFrame;
+                    int bin = std::round(_data->checksumFreqs_hz[k]*_data->ihzPerFrame);
                     if (_data->historySpectrumAverage[bin] > 1.0*_data->historySpectrumAverage[bin + 1]) {
                         curChecksum += (1 << k);
                         if (k == 1) curParity = 1;
@@ -803,15 +852,30 @@ void Core::main() {
 
             _data->sampleSpectrum = _data->sampleSpectrumTmp;
 
-            // write data
-            int err = SDL_QueueAudio(_data->devid_out, _data->outputBlock.data() + sampleStartId, sizeof(float)*_data->samplesPerSubFrame);
-            if (err) {
-                CG_FATAL(0, "Unable to write audio data\n");
-                continue;
+            if (data->sendingData) {
+                if (_data->sendId < 4) {
+                    SDL_PauseAudioDevice(_data->devid_out, SDL_TRUE);
+                } else {
+                    SDL_PauseAudioDevice(_data->devid_out, SDL_FALSE);
+                }
+
+                // write data
+                int err = SDL_QueueAudio(_data->devid_out, _data->outputBlock.data() + sampleStartId, sizeof(float)*_data->samplesPerSubFrame);
+                if (err) {
+                    CG_FATAL(0, "Unable to write audio data\n");
+                    continue;
+                }
+            } else {
+                SDL_PauseAudioDevice(_data->devid_out, SDL_FALSE);
             }
 
             ++data->nIterations;
             if (!_data->waitForNewFrame) ++_data->frameId;
+        }
+
+        if ((int) SDL_GetQueuedAudioSize(_data->devid_in) > 32*sizeof(float)*_data->samplesPerFrame) {
+            printf("nIter = %d, Queue size: %d\n", data->nIterations, SDL_GetQueuedAudioSize(_data->devid_in));
+            SDL_ClearQueuedAudio(_data->devid_in);
         }
 
         cache();

@@ -381,6 +381,8 @@ void UI::renderWindowInput() const {
         auto wSize = ImGui::GetContentRegionAvail();
         wSize.y *= 0.333;
         ImGui::PlotLines("##plotWaveform", data->sampleAmplitude->data(), data->samplesPerFrame, 0, "Waveform", -0.2f, 0.2f, wSize);
+    } else {
+        ImGui::TextColored({ 1.0f, 0.0f, 0.0f, 1.0f }, "Audio not initialized yet!");
     }
 
     if (data->sampleSpectrum != nullptr) {

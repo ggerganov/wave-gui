@@ -3,33 +3,52 @@
  *  \author Georgi Gerganov
  */
 
+#ifdef __EMSCRIPTEN__
+#include "emscripten/emscripten.h"
+#endif
+
 #include "cg_config.h"
 #include "cg_logger.h"
 
 #include "app.h"
 
-int main(int /*argc*/, char ** /*argv*/) {
+#include <functional>
+
+static std::function<bool()> g_update;
+
+void update() {
+    g_update();
+}
+
+int main(int /*argc*/, char ** argv) {
     CG::Logger::getInstance().configure("data/logger.cfg", "Logger");
 
-    try {
-        App::Parameters params;
-        params.windowSizeX = 1200;
-        params.windowSizeY = 800;
-        params.windowTitle = "Data Transfer Over Sound";
+    CG_INFO(0, "Capture device name: %s\n", argv[1]);
 
-        App app(params);
+    App::Parameters params;
+    params.windowSizeX = 1200;
+    params.windowSizeY = 800;
+    params.windowTitle = "Data Transfer Over Sound";
 
-        while (true) {
-            app.update();
-            app.render();
+    App app(params);
 
-            if (app.shouldTerminate()) break;
-        }
+    g_update = [&]() {
+        app.update();
+        app.render();
 
-        app.terminate();
-    } catch (CG::Exception &ex) {
-        CG_FATAL(0, "%s\n", ex._info);
+        if (app.shouldTerminate()) return false;
+        return true;
+    };
+
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop(update, 60, 1);
+#else
+    while (true) {
+        if (g_update() == false) break;
     }
+#endif
+
+    app.terminate();
 
     return 0;
 }

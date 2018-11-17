@@ -12,8 +12,9 @@
 namespace Data {
 
 namespace Constants {
-constexpr auto kDefaultSamplingRate = 44100;
-constexpr auto kSubFrames = 32;
+constexpr auto kDefaultSamplingRate = 48000;
+constexpr auto kSubFrames = 8;
+constexpr auto kFactor = kSubFrames/8;
 constexpr auto kMaxSamplesPerFrame = 1024;
 constexpr auto kMaxDataBits = 256;
 constexpr auto kMaxBitsPerChecksum = 10;
@@ -58,12 +59,12 @@ struct StateInput {
     int sampleRate = Constants::kDefaultSamplingRate;
     int samplesPerFrame = Constants::kMaxSamplesPerFrame;
     int samplesPerSubFrame = samplesPerFrame/Constants::kSubFrames;
-    int nRampFramesBegin = 64;
-    int nRampFramesEnd = 64;
-    int nRampFramesBlend = 64;
+    int nRampFramesBegin = 16*Constants::kFactor;
+    int nRampFramesEnd = 16*Constants::kFactor;
+    int nRampFramesBlend = 16*Constants::kFactor;
     int nConfirmFrames = 6;
-    int subFramesPerTx = 128;
-    int nDataBitsPerTx = 128;
+    int subFramesPerTx = 64*Constants::kFactor;
+    int nDataBitsPerTx = 64*Constants::kFactor;
     int nECCBytesPerTx = 4;
 
     bool encodeIdParity = true;

@@ -31,11 +31,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 64;
-                cfg.nRampFramesEnd = 64;
-                cfg.nRampFramesBlend = 64;
-                cfg.nConfirmFrames = 16;
-                cfg.subFramesPerTx = 128;
+                cfg.nRampFramesBegin = 16*Constants::kFactor;
+                cfg.nRampFramesEnd = 16*Constants::kFactor;
+                cfg.nRampFramesBlend = 16*Constants::kFactor;
+                cfg.nConfirmFrames = 4*Constants::kFactor;
+                cfg.subFramesPerTx = 32*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*1;
 
                 cfg.encodeIdParity = true;
@@ -52,11 +52,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 64;
-                cfg.nRampFramesEnd = 64;
-                cfg.nRampFramesBlend = 64;
-                cfg.nConfirmFrames = 16;
-                cfg.subFramesPerTx = 128;
+                cfg.nRampFramesBegin = 16*Constants::kFactor;
+                cfg.nRampFramesEnd = 16*Constants::kFactor;
+                cfg.nRampFramesBlend = 16*Constants::kFactor;
+                cfg.nConfirmFrames = 4*Constants::kFactor;
+                cfg.subFramesPerTx = 32*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*1;
 
                 cfg.encodeIdParity = true;
@@ -73,11 +73,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 64;
-                cfg.nRampFramesEnd = 64;
-                cfg.nRampFramesBlend = 64;
-                cfg.nConfirmFrames = 16;
-                cfg.subFramesPerTx = 128;
+                cfg.nRampFramesBegin = 16*Constants::kFactor;
+                cfg.nRampFramesEnd = 16*Constants::kFactor;
+                cfg.nRampFramesBlend = 16*Constants::kFactor;
+                cfg.nConfirmFrames = 4*Constants::kFactor;
+                cfg.subFramesPerTx = 32*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*1;
 
                 cfg.encodeIdParity = true;
@@ -93,11 +93,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 32;
-                cfg.nRampFramesEnd = 32;
-                cfg.nRampFramesBlend = 32;
-                cfg.nConfirmFrames = 64;
-                cfg.subFramesPerTx = 256;
+                cfg.nRampFramesBegin = 8*Constants::kFactor;
+                cfg.nRampFramesEnd = 8*Constants::kFactor;
+                cfg.nRampFramesBlend = 8*Constants::kFactor;
+                cfg.nConfirmFrames = 16*Constants::kFactor;
+                cfg.subFramesPerTx = 64*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*2;
 
                 cfg.encodeIdParity = true;
@@ -114,11 +114,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 64;
-                cfg.nRampFramesEnd = 64;
-                cfg.nRampFramesBlend = 64;
-                cfg.nConfirmFrames = 48;
-                cfg.subFramesPerTx = 256;
+                cfg.nRampFramesBegin = 16*Constants::kFactor;
+                cfg.nRampFramesEnd = 16*Constants::kFactor;
+                cfg.nRampFramesBlend = 16*Constants::kFactor;
+                cfg.nConfirmFrames = 12*Constants::kFactor;
+                cfg.subFramesPerTx = 64*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*4;
 
                 cfg.encodeIdParity = true;
@@ -135,11 +135,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 32;
-                cfg.nRampFramesEnd = 32;
-                cfg.nRampFramesBlend = 32;
-                cfg.nConfirmFrames = 16;
-                cfg.subFramesPerTx = 128;
+                cfg.nRampFramesBegin = 8*Constants::kFactor;
+                cfg.nRampFramesEnd = 8*Constants::kFactor;
+                cfg.nRampFramesBlend = 8*Constants::kFactor;
+                cfg.nConfirmFrames = 4*Constants::kFactor;
+                cfg.subFramesPerTx = 32*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*4;
 
                 cfg.encodeIdParity = true;
@@ -156,11 +156,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 64;
-                cfg.nRampFramesEnd = 64;
-                cfg.nRampFramesBlend = 64;
-                cfg.nConfirmFrames = 32;
-                cfg.subFramesPerTx = 192;
+                cfg.nRampFramesBegin = 16*Constants::kFactor;
+                cfg.nRampFramesEnd = 16*Constants::kFactor;
+                cfg.nRampFramesBlend = 16*Constants::kFactor;
+                cfg.nConfirmFrames = 8*Constants::kFactor;
+                cfg.subFramesPerTx = 48*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*6;
 
                 cfg.encodeIdParity = true;
@@ -177,11 +177,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 64;
-                cfg.nRampFramesEnd = 64;
-                cfg.nRampFramesBlend = 64;
-                cfg.nConfirmFrames = 48;
-                cfg.subFramesPerTx = 192;
+                cfg.nRampFramesBegin = 16*Constants::kFactor;
+                cfg.nRampFramesEnd = 16*Constants::kFactor;
+                cfg.nRampFramesBlend = 16*Constants::kFactor;
+                cfg.nConfirmFrames = 12*Constants::kFactor;
+                cfg.subFramesPerTx = 48*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*9;
 
                 cfg.encodeIdParity = true;
@@ -198,11 +198,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 64;
-                cfg.nRampFramesEnd = 64;
-                cfg.nRampFramesBlend = 64;
-                cfg.nConfirmFrames = 48;
-                cfg.subFramesPerTx = 128;
+                cfg.nRampFramesBegin = 16*Constants::kFactor;
+                cfg.nRampFramesEnd = 16*Constants::kFactor;
+                cfg.nRampFramesBlend = 16*Constants::kFactor;
+                cfg.nConfirmFrames = 12*Constants::kFactor;
+                cfg.subFramesPerTx = 32*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*6;
 
                 cfg.encodeIdParity = true;
@@ -219,11 +219,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 64;
-                cfg.nRampFramesEnd = 64;
-                cfg.nRampFramesBlend = 64;
-                cfg.nConfirmFrames = 16;
-                cfg.subFramesPerTx = 128;
+                cfg.nRampFramesBegin = 16*Constants::kFactor;
+                cfg.nRampFramesEnd = 16*Constants::kFactor;
+                cfg.nRampFramesBlend = 16*Constants::kFactor;
+                cfg.nConfirmFrames = 4*Constants::kFactor;
+                cfg.subFramesPerTx = 32*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*8;
 
                 cfg.encodeIdParity = true;
@@ -240,11 +240,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 64;
-                cfg.nRampFramesEnd = 64;
-                cfg.nRampFramesBlend = 64;
-                cfg.nConfirmFrames = 32;
-                cfg.subFramesPerTx = 192;
+                cfg.nRampFramesBegin = 16*Constants::kFactor;
+                cfg.nRampFramesEnd = 16*Constants::kFactor;
+                cfg.nRampFramesBlend = 16*Constants::kFactor;
+                cfg.nConfirmFrames = 8*Constants::kFactor;
+                cfg.subFramesPerTx = 48*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*12;
 
                 cfg.encodeIdParity = true;
@@ -261,11 +261,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 64;
-                cfg.nRampFramesEnd = 64;
-                cfg.nRampFramesBlend = 64;
-                cfg.nConfirmFrames = 16;
-                cfg.subFramesPerTx = 128;
+                cfg.nRampFramesBegin = 16*Constants::kFactor;
+                cfg.nRampFramesEnd = 16*Constants::kFactor;
+                cfg.nRampFramesBlend = 16*Constants::kFactor;
+                cfg.nConfirmFrames = 4*Constants::kFactor;
+                cfg.subFramesPerTx = 32*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*16;
 
                 cfg.encodeIdParity = true;
@@ -282,11 +282,11 @@ namespace Data {
                 cfg.sampleRate = Constants::kDefaultSamplingRate;
                 cfg.samplesPerFrame = Constants::kMaxSamplesPerFrame;
                 cfg.samplesPerSubFrame = cfg.samplesPerFrame/Constants::kSubFrames;
-                cfg.nRampFramesBegin = 64;
-                cfg.nRampFramesEnd = 64;
-                cfg.nRampFramesBlend = 64;
-                cfg.nConfirmFrames = 16;
-                cfg.subFramesPerTx = 128;
+                cfg.nRampFramesBegin = 16*Constants::kFactor;
+                cfg.nRampFramesEnd = 16*Constants::kFactor;
+                cfg.nRampFramesBlend = 16*Constants::kFactor;
+                cfg.nConfirmFrames = 4*Constants::kFactor;
+                cfg.subFramesPerTx = 32*Constants::kFactor;
                 cfg.nDataBitsPerTx = 8*24;
 
                 cfg.encodeIdParity = true;
