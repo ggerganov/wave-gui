@@ -12,7 +12,7 @@
 #include "cg_glfw3.h"
 
 #include "imgui/imgui.h"
-#include "imgui/examples/opengl2_example/imgui_impl_glfw.h"
+#include "imgui/imgui_impl.h"
 
 #include <GLFW/glfw3.h>
 
@@ -35,8 +35,6 @@ struct UI::Data {
 
     int frametime_ms = 0;
 
-    void * imGuiTexID = nullptr;
-    ImGuiContext * imGuiContext = nullptr;
     CG::Window2D * window = nullptr;
 
     //ImGuiWindowFlags windowFlags = ImGuiWindowFlags_ShowBorders;
@@ -69,19 +67,16 @@ bool UI::init(std::weak_ptr<CG::Window2D> window) {
         return false;
     }
 
-    _data->imGuiContext = ImGui::CreateContext();
-    ImGui::SetCurrentContext(_data->imGuiContext);
-
-    ImGui_ImplGlfw_CreateDeviceObjects();
-    _data->imGuiTexID = ImGui::GetIO().Fonts->TexID;
-
-    ImGui::applyStyle<ImGui::IMGUI_STYLE_TEAL_AND_ORANGE>();
-
     if (auto w = window.lock()) {
         _data->window = w.get();
     } else {
         return false;
     }
+
+    ImGui::CreateContext();
+    ImGui_Init(_data->window->getGLFWWindow(), true);
+
+    ImGui::applyStyle<ImGui::IMGUI_STYLE_TEAL_AND_ORANGE>();
 
     if (auto & c = _data->callbacks[BUTTON_INIT]) c();
 
@@ -117,16 +112,12 @@ void UI::processKeyboard() {
 }
 
 void UI::update() {
-    ImGui::SetCurrentContext(_data->imGuiContext);
-    ImGui_ImplGlfw_Init(_data->window->getGLFWWindow(), true);
-    ImGui::GetIO().Fonts->TexID = _data->imGuiTexID;
-
     pollEvents();
     processKeyboard();
 }
 
 void UI::render() const {
-    ImGui_ImplGlfw_NewFrame();
+    ImGui_NewFrame();
 
     auto tStart = std::chrono::high_resolution_clock::now();
 
@@ -143,14 +134,13 @@ void UI::render() const {
     _data->frametime_ms = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart).count();
 
     ImGui::Render();
+    ImGui_RenderDrawData(ImGui::GetDrawData());
 }
 
 void UI::terminate() {
     CG_INFO(0, "Terminating UI\n");
 
-    ImGui::SetCurrentContext(_data->imGuiContext);
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext(_data->imGuiContext);
+    ImGui_Shutdown();
 }
 
 void UI::setStateData(std::weak_ptr<::Data::StateData> stateData) {
@@ -193,7 +183,7 @@ void UI::renderMainMenuBar() const {
     }
 
     if (showDemoWindow) {
-        ImGui::ShowTestWindow(&showDemoWindow);
+        ImGui::ShowTestWindow();
     }
 
     if (showMetricsWindow) {
@@ -251,7 +241,7 @@ void UI::renderWindowControls() const {
     ImGui::NextColumn();
     ImGui::Columns(1);
 
-    if (ImGui::CollapsingHeader("Rx. / Tx. Options", nullptr, true, true)) {
+    if (ImGui::CollapsingHeader("Rx. / Tx. Options", ImGuiTreeNodeFlags_DefaultOpen)) {
         bool updateSendParameters = false;
 
         {

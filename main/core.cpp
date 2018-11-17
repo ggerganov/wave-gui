@@ -771,7 +771,7 @@ void Core::main() {
                 }
             }
 
-            //// read data
+            // read data
             int nBytesRecorded = 0;
             while (true) {
                 nBytesRecorded = SDL_DequeueAudio(_data->devid_in, _data->sampleAmplitude.data() + sampleStartId, sizeof(float)*_data->samplesPerSubFrame);
