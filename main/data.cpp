@@ -5,6 +5,8 @@
 
 #include "data.h"
 
+#include <cmath>
+
 namespace Data {
 
     const char * StateInput::configNames[] = {
@@ -302,6 +304,14 @@ namespace Data {
             default:
                 break;
         };
+
+        cfg.nConfirmFrames = std::max(1, cfg.nConfirmFrames);
+
+        cfg.nRampFramesBegin = std::round(cfg.nRampFramesBegin);
+        cfg.nRampFramesEnd = std::round(cfg.nRampFramesEnd);
+        cfg.nRampFramesBlend = std::round(cfg.nRampFramesBlend);
+        cfg.nConfirmFrames = std::round(cfg.nConfirmFrames);
+        cfg.subFramesPerTx = std::round(cfg.subFramesPerTx);
 
         return cfg;
     }
