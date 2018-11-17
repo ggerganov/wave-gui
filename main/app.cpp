@@ -24,7 +24,7 @@ App::App(const Parameters & params) {
 
     _window->initialize(params.windowSizeX, params.windowSizeY, params.windowTitle.c_str(), true);
     _window->makeContextActive();
-    //_window->setSwapInterval(0);
+    _window->setSwapInterval(1);
 
     _ui->setStateData(_core->getStateData());
     _core->setStateInput(_ui->getStateInput());

@@ -13,16 +13,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -W -Wall -Wno-long-long -peda
 ## Dependencies
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(SDL2 REQUIRED)
 pkg_search_module(GLFW REQUIRED glfw3)
 include_directories(SYSTEM ${GLFW_INCLUDE_DIRS})
-
-find_package(PortAudio)
-if (PORTAUDIO_FOUND)
-    message(STATUS "PortAudio support enabled.")
-    include_directories(SYSTEM ${PORTAUDIO_INCLUDE_DIRS})
-else()
-    message(WARNING "Cannot find PortAudio. Not using/building PortAudio stuff")
-endif()
 
 find_package(FFTW)
 if (FFTW_FOUND)
