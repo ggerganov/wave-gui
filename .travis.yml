@@ -19,10 +19,10 @@ before_install:
       sudo apt-get update;
     fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then rm /usr/local/include/c++; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi  
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install glfw; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install fftw; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install portaudio; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install sdl2; fi
 
 install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
@@ -46,4 +46,4 @@ addons:
   apt:
     packages:
       - libfftw3-dev
-      - portaudio19-dev
+      - sdl2-dev
