@@ -23,6 +23,7 @@
 #include <atomic>
 #include <cstdlib>
 #include <cinttypes>
+#include <functional>
 
 namespace {
 constexpr float IRAND_MAX = 1.0f/RAND_MAX;
