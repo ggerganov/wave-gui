@@ -1,0 +1,4 @@
+bin
+build*
+lib
+fftw-3.3.3
