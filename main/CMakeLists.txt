@@ -22,7 +22,7 @@ endfunction()
 
 include_directories(".")
 
-set(CG_ADDITIONAL_LIBRARIES ${PORTAUDIO_LIBRARIES} ${FFTWF_LIBRARIES})
+set(CG_ADDITIONAL_LIBRARIES ${SDL2_LIBRARY} ${FFTWF_LIBRARIES})
 cg_add_program("wave-gui"
     main.cpp
     app.cpp

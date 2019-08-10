@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/ggerganov/wave-gui.svg?branch=master)](https://travis-ci.org/ggerganov/wave-gui?branch=master)
+[![Build Status](https://travis-ci.org/ggerganov/wave-gui.svg?branch=sdl)](https://travis-ci.org/ggerganov/wave-gui?branch=sdl)
 
 # wave-gui
 Yet another data-over-sound tool
@@ -22,7 +22,7 @@ Videos:
 
 - [GLFW3](http://www.glfw.org)
 - [FFTW](http://www.fftw.org)
-- [PortAudio](http://www.portaudio.com)
+- [SDL2](https://www.libsdl.org)
 - [ImGui](https://github.com/ocornut/imgui) (git submodule)
 
 ## Thanks

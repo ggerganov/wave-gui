@@ -22,12 +22,14 @@ void Window2D::render() const {
     glDisable(GL_SCISSOR_TEST);
     glClear(GL_COLOR_BUFFER_BIT);
 
+#ifndef __EMSCRIPTEN__
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(-1.f, 1.f, 1.f, -1.f, 1.f, -1.f);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+#endif
 }
 
 void Window2D::updateWindowSize() {
@@ -70,9 +72,11 @@ void Window2D::applyViewport(int vid, bool clip) {
         float x0 = -1.0f - (dx*viewport.x0)/_windowWidth;
         float y0 = -1.0f - (dy*viewport.y0)/_windowHeight;
 
+#ifndef __EMSCRIPTEN__
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
         glOrtho(x0, x0 + dx, y0, y0 + dy, 1.f, -1.f);
+#endif
 
         if (clip) {
             glScissor(

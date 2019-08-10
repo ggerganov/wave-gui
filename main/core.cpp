@@ -10,9 +10,10 @@
 #include "cg_logger.h"
 #include "cg_ring_buffer.h"
 
-#include "portaudio.h"
-
 #include "fftw3.h"
+
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
 
 #include "reed-solomon/rs.hpp"
 
@@ -25,32 +26,135 @@
 #include <cinttypes>
 #include <functional>
 
+#ifdef __EMSCRIPTEN__
+static bool g_isInitialized = false;
+#else
+static bool g_isInitialized = true;
+#endif
+
 namespace {
-constexpr float IRAND_MAX = 1.0f/RAND_MAX;
-inline float frand() { return ((float)(rand()%RAND_MAX)*IRAND_MAX); }
+    constexpr float IRAND_MAX = 1.0f/RAND_MAX;
+    inline float frand() { return ((float)(rand()%RAND_MAX)*IRAND_MAX); }
 
-inline void updateStateData(const ::Data::StateData * bsrc, ::Data::StateData * bdst) {
-    bdst->nIterations = bsrc->nIterations;
-    bdst->samplesPerFrame = bsrc->samplesPerFrame;
-    bdst->samplesPerSubFrame = bsrc->samplesPerSubFrame;
-    bdst->sendingData = bsrc->sendingData;
-    bdst->receivingData = bsrc->receivingData;
-    bdst->sampleAmplitude = bsrc->sampleAmplitude;
-    bdst->sampleSpectrum = bsrc->sampleSpectrum;
-    bdst->historySpectrumAverage = bsrc->historySpectrumAverage;
-    bdst->bitAmplitude = bsrc->bitAmplitude;
-    bdst->receivedData = bsrc->receivedData;
-}
+    inline void updateStateData(const ::Data::StateData * bsrc, ::Data::StateData * bdst) {
+        bdst->nIterations = bsrc->nIterations;
+        bdst->samplesPerFrame = bsrc->samplesPerFrame;
+        bdst->samplesPerSubFrame = bsrc->samplesPerSubFrame;
+        bdst->sendingData = bsrc->sendingData;
+        bdst->receivingData = bsrc->receivingData;
+        bdst->sampleAmplitude = bsrc->sampleAmplitude;
+        bdst->sampleSpectrum = bsrc->sampleSpectrum;
+        bdst->historySpectrumAverage = bsrc->historySpectrumAverage;
+        bdst->bitAmplitude = bsrc->bitAmplitude;
+        bdst->receivedData = bsrc->receivedData;
+    }
 
-inline void addAmplitude(const ::Data::AmplitudeData & src, ::Data::AmplitudeData & dst, float scalar, int startId, int finalId) {
-    for (int i = startId; i < finalId; i++) {
-        dst[i] += scalar*src[i];
+    inline void addAmplitude(const ::Data::AmplitudeData & src, ::Data::AmplitudeData & dst, float scalar, int startId, int finalId) {
+        for (int i = startId; i < finalId; i++) {
+            dst[i] += scalar*src[i];
+        }
+    }
+
+    bool initAudio(SDL_AudioDeviceID & devid_in, SDL_AudioDeviceID & devid_out) {
+        CG_INFO(0, "Initializing audio I/O ...\n");
+
+        SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+
+        if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s\n", SDL_GetError());
+            return (1);
+        }
+
+        {
+            int devcount = SDL_GetNumAudioDevices(SDL_FALSE);
+            for (int i = 0; i < devcount; i++) {
+                CG_INFO(0, "Output  device #%d: '%s'\n", i, SDL_GetAudioDeviceName(i, SDL_FALSE));
+            }
+        }
+        {
+            int devcount = SDL_GetNumAudioDevices(SDL_TRUE);
+            for (int i = 0; i < devcount; i++) {
+                CG_INFO(0, "Capture device #%d: '%s'\n", i, SDL_GetAudioDeviceName(i, SDL_TRUE));
+            }
+        }
+
+        SDL_AudioSpec desiredSpec;
+        SDL_zero(desiredSpec);
+
+        desiredSpec.freq = ::Data::Constants::kDefaultSamplingRate;
+        desiredSpec.format = AUDIO_F32SYS;
+        desiredSpec.channels = 1;
+        desiredSpec.samples = 1024;
+        desiredSpec.callback = NULL;
+
+        SDL_AudioSpec obtainedSpec;
+        SDL_zero(obtainedSpec);
+
+        devid_out = SDL_OpenAudioDevice(nullptr, SDL_FALSE, &desiredSpec, &obtainedSpec, 0);
+        if (!devid_out) {
+            CG_FATAL(0, "Couldn't open an audio device for playback: %s!\n", SDL_GetError());
+            devid_out = 0;
+        } else {
+            CG_INFO(0, "Obtained spec for output device (SDL Id = %d):\n", devid_out);
+            CG_INFO(0, "    - Sample rate:       %d (required: %d)\n", obtainedSpec.freq, desiredSpec.freq);
+            CG_INFO(0, "    - Format:            %d (required: %d)\n", obtainedSpec.format, desiredSpec.format);
+            CG_INFO(0, "    - Channels:          %d (required: %d)\n", obtainedSpec.channels, desiredSpec.channels);
+            CG_INFO(0, "    - Samples per frame: %d (required: %d)\n", obtainedSpec.samples, desiredSpec.samples);
+
+            if (obtainedSpec.format != desiredSpec.format ||
+                obtainedSpec.channels != desiredSpec.channels ||
+                obtainedSpec.samples != desiredSpec.samples) {
+                SDL_CloseAudio();
+                return false;
+            }
+        }
+
+        SDL_AudioSpec captureSpec;
+        captureSpec = obtainedSpec;
+        captureSpec.freq = ::Data::Constants::kDefaultSamplingRate;
+        captureSpec.format = AUDIO_F32SYS;
+        captureSpec.samples = 1024;
+
+        devid_in = SDL_OpenAudioDevice(nullptr, SDL_TRUE, &captureSpec, &captureSpec, 0);
+        if (!devid_in) {
+            CG_FATAL(0, "Couldn't open an audio device for capture: %s!\n", SDL_GetError());
+            devid_in = 0;
+        } else {
+            CG_INFO(0, "Obtained spec for input device (SDL Id = %d):\n", devid_in);
+            CG_INFO(0, "    - Sample rate:       %d\n", captureSpec.freq);
+            CG_INFO(0, "    - Format:            %d (required: %d)\n", captureSpec.format, desiredSpec.format);
+            CG_INFO(0, "    - Channels:          %d (required: %d)\n", captureSpec.channels, desiredSpec.channels);
+            CG_INFO(0, "    - Samples per frame: %d\n", captureSpec.samples);
+        }
+
+        return true;
     }
 }
+
+static std::function<bool()> g_init;
+
+static SDL_AudioDeviceID g_devid_in = 0;
+static SDL_AudioDeviceID g_devid_out = 0;
+
+int init() {
+    if (g_isInitialized) return 0;
+
+    if (::initAudio(g_devid_in, g_devid_out) == false) return 22;
+
+    g_isInitialized = true;
+    g_init();
+
+    return 0;
+}
+
+extern "C" {
+    int doInit() { return init(); }
 }
 
 struct Core::Data {
     Data() {
+        SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+
         for (auto & s : historySpectrum) {
             s.fill(0);
         }
@@ -59,66 +163,26 @@ struct Core::Data {
     ~Data() {
         free();
 
-        Pa_Terminate();
+        SDL_CloseAudio();
+        SDL_Quit();
     }
 
     bool init() {
-        PaError err;
-        err = Pa_Initialize();
-        if (err != paNoError) {
-            CG_FATAL(0, "Unable to Pa_Iniitialize()\n");
+        if (g_isInitialized == false) {
             return false;
         }
 
-        inputParameters.device = Pa_GetDefaultInputDevice(); /* default input device */
-        CG_INFO(0, "Input device # %d.\n", inputParameters.device );
-        inputInfo = Pa_GetDeviceInfo( inputParameters.device );
-        CG_INFO(0, "    Name: %s\n", inputInfo->name );
-        CG_INFO(0, "      LL: %g s\n", inputInfo->defaultLowInputLatency );
-        CG_INFO(0, "      HL: %g s\n", inputInfo->defaultHighInputLatency );
-        CG_INFO(0, "      SR: %g\n", inputInfo->defaultSampleRate );
+#ifdef __EMSCRIPTEN__
+        devid_in = g_devid_in;
+        devid_out = g_devid_out;
+#else
+        if (::initAudio(devid_in, devid_out) == false) return false;
+#endif
 
-        outputParameters.device = Pa_GetDefaultOutputDevice(); /* default output device */
-        CG_INFO(0, "Output device # %d.\n", outputParameters.device );
-        outputInfo = Pa_GetDeviceInfo( outputParameters.device );
-        CG_INFO(0, "   Name: %s\n", outputInfo->name );
-        CG_INFO(0, "     LL: %g s\n", outputInfo->defaultLowOutputLatency );
-        CG_INFO(0, "     HL: %g s\n", outputInfo->defaultHighOutputLatency );
+        int numChannels = 1;
 
-        int numChannels = inputInfo->maxInputChannels < outputInfo->maxOutputChannels
-            ? inputInfo->maxInputChannels : outputInfo->maxOutputChannels;
-        numChannels = 1;
-        CG_INFO(0, "Num channels = %d.\n", numChannels );
-
-        inputParameters.channelCount = numChannels;
-        inputParameters.sampleFormat = paFloat32;
-        inputParameters.suggestedLatency = inputInfo->defaultLowInputLatency;
-        inputParameters.hostApiSpecificStreamInfo = NULL;
-
-        outputParameters.channelCount = numChannels;
-        outputParameters.sampleFormat = paFloat32;
-        outputParameters.suggestedLatency = outputInfo->defaultLowOutputLatency;
-        outputParameters.hostApiSpecificStreamInfo = NULL;
-
-        err = Pa_OpenStream(
-                &stream,
-                &inputParameters,
-                &outputParameters,
-                sampleRate,
-                samplesPerSubFrame,
-                paClipOff,      /* we won't output out of range samples so don't bother clipping them */
-                NULL,
-                NULL ); /* no callback, so no callback userData */
-        if (err != paNoError) {
-            CG_FATAL(0, "Unable to Pa_OpenStream()\n");
-            return false;
-        }
-
-        err = Pa_StartStream(stream);
-        if (err != paNoError) {
-            CG_FATAL(0, "Unable to Pa_StartSteam()\n");
-            return false;
-        }
+        SDL_PauseAudioDevice(devid_in, SDL_FALSE);
+        SDL_PauseAudioDevice(devid_out, SDL_FALSE);
 
         fftIn = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex)*samplesPerFrame);
         fftOut = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex)*samplesPerFrame);
@@ -135,9 +199,13 @@ struct Core::Data {
     }
 
     void free() {
-        if( stream ) {
-            Pa_AbortStream( stream );
-            Pa_CloseStream( stream );
+        if( devid_in || devid_out ) {
+            SDL_PauseAudioDevice(devid_in, SDL_TRUE);
+            SDL_CloseAudioDevice(devid_in);
+            SDL_PauseAudioDevice(devid_out, SDL_TRUE);
+            SDL_CloseAudioDevice(devid_out);
+            devid_in = 0;
+            devid_out = 0;
         }
 
         if (fftPlan) fftwf_destroy_plan(fftPlan);
@@ -178,12 +246,8 @@ struct Core::Data {
     int samplesPerSubFrame = 1;
     float isamplesPerFrame = isamplesPerFrame = 1.0f/samplesPerFrame;
 
-    PaStreamParameters inputParameters;
-    PaStreamParameters outputParameters;
-
-    PaStream *stream = NULL;
-    const PaDeviceInfo* inputInfo;
-    const PaDeviceInfo* outputInfo;
+    SDL_AudioDeviceID devid_in = 0;
+    SDL_AudioDeviceID devid_out = 0;
 
     ::Data::AmplitudeData sampleAmplitude;
     ::Data::AmplitudeData outputBlock;
@@ -241,6 +305,11 @@ Core::Core() : _data(new Data()) {
     _data->stateData[Data::BUFFER_UI]     = std::make_shared<::Data::StateData>();
     _data->stateData[Data::BUFFER_CACHED] = std::make_shared<::Data::StateData>();
     _data->stateData[Data::BUFFER_ACTIVE] = std::make_shared<::Data::StateData>();
+
+    g_init = [this]() {
+        this->addEvent(Core::Init);
+        return true;
+    };
 }
 
 Core::~Core() {
@@ -288,14 +357,14 @@ void Core::addEvent(Event event) {
     switch(event) {
         case Init:
             {
-                CG_INFO(0, "Initializing audio I/O ...\n");
-
                 auto sampleRate = inp->sampleRate;
                 auto samplesPerFrame = inp->samplesPerFrame;
                 auto samplesPerSubFrame = inp->samplesPerSubFrame;
                 auto hzPerFrame = inp->getHzPerFrame();
 
                 _data->inputQueue.push([this, sampleRate, samplesPerFrame, samplesPerSubFrame, hzPerFrame]() {
+                    if (_data->isInitialized) return;
+
                     _data->isInitialized = false;
                     _data->needRecache = true;
 
@@ -522,7 +591,7 @@ void Core::main() {
 
                 bool isValid = true;
                 {
-                    int bin = _data->checksumFreqs_hz[0]*_data->ihzPerFrame;
+                    int bin = std::round(_data->checksumFreqs_hz[0]*_data->ihzPerFrame);
                     if (_data->historySpectrumAverage[bin] < 10*_data->historySpectrumAverage[bin - 1] &&
 						_data->historySpectrumAverage[bin] < 10*_data->historySpectrumAverage[bin + 1]) {
                         if (data->receivingData == true) {
@@ -539,7 +608,7 @@ void Core::main() {
                 }
 
                 for (int k = 0; k < _data->nDataBitsPerTx; ++k) {
-                    int bin = _data->dataFreqs_hz[k]*_data->ihzPerFrame;
+                    int bin = std::round(_data->dataFreqs_hz[k]*_data->ihzPerFrame);
                     if (_data->historySpectrumAverage[bin] > 1.0*_data->historySpectrumAverage[bin + 1]) {
                         receivedData[k/8] += (1 << (k%8));
                     } else {
@@ -550,7 +619,7 @@ void Core::main() {
                 }
 
                 for (int k = 1; k < ::Data::Constants::kMaxBitsPerChecksum; ++k) {
-                    int bin = _data->checksumFreqs_hz[k]*_data->ihzPerFrame;
+                    int bin = std::round(_data->checksumFreqs_hz[k]*_data->ihzPerFrame);
                     if (_data->historySpectrumAverage[bin] > 1.0*_data->historySpectrumAverage[bin + 1]) {
                         curChecksum += (1 << k);
                         if (k == 1) curParity = 1;
@@ -751,10 +820,16 @@ void Core::main() {
                 }
             }
 
-            //// read data
-            PaError err;
-            err = Pa_ReadStream(_data->stream, _data->sampleAmplitude.data() + sampleStartId, _data->samplesPerSubFrame);
-            if (err) {
+            // read data
+            int nBytesRecorded = 0;
+            while (true) {
+                nBytesRecorded = SDL_DequeueAudio(_data->devid_in, _data->sampleAmplitude.data() + sampleStartId, sizeof(float)*_data->samplesPerSubFrame);
+                if (nBytesRecorded != 0) {
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            if (nBytesRecorded < 0) {
                 CG_FATAL(0, "Unable to capture data\n");
                 continue;
             }
@@ -777,15 +852,30 @@ void Core::main() {
 
             _data->sampleSpectrum = _data->sampleSpectrumTmp;
 
-            // write data
-            err = Pa_WriteStream(_data->stream, _data->outputBlock.data() + sampleStartId, _data->samplesPerSubFrame);
-            if (err) {
-                CG_FATAL(0, "Unable to write audio data\n");
-                continue;
+            if (data->sendingData) {
+                if (_data->sendId < 4) {
+                    SDL_PauseAudioDevice(_data->devid_out, SDL_TRUE);
+                } else {
+                    SDL_PauseAudioDevice(_data->devid_out, SDL_FALSE);
+                }
+
+                // write data
+                int err = SDL_QueueAudio(_data->devid_out, _data->outputBlock.data() + sampleStartId, sizeof(float)*_data->samplesPerSubFrame);
+                if (err) {
+                    CG_FATAL(0, "Unable to write audio data\n");
+                    continue;
+                }
+            } else {
+                SDL_PauseAudioDevice(_data->devid_out, SDL_FALSE);
             }
 
             ++data->nIterations;
             if (!_data->waitForNewFrame) ++_data->frameId;
+        }
+
+        if ((int) SDL_GetQueuedAudioSize(_data->devid_in) > 32*sizeof(float)*_data->samplesPerFrame) {
+            printf("nIter = %d, Queue size: %d\n", data->nIterations, SDL_GetQueuedAudioSize(_data->devid_in));
+            SDL_ClearQueuedAudio(_data->devid_in);
         }
 
         cache();
