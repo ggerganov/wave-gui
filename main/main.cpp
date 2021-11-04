@@ -16,7 +16,7 @@
 
 static std::function<bool()> g_update;
 
-void update() {
+void update(void *) {
     g_update();
 }
 
@@ -41,7 +41,7 @@ int main(int /*argc*/, char ** argv) {
     };
 
 #ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop(update, 60, 1);
+    emscripten_set_main_loop_arg(update, NULL, 0, true);
 #else
     while (true) {
         if (g_update() == false) break;
