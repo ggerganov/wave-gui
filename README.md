@@ -3,7 +3,7 @@
 # wave-gui
 Yet another data-over-sound tool
 
-[**Live demo *(Chrome only)***](https://ggerganov.github.io/jekyll/update/2018/11/17/wave-gui.html)
+[**Live demo *(Chrome only)***](https://wave-gui.ggerganov.com)
 
 Videos:
 
